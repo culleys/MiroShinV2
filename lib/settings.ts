@@ -1,7 +1,11 @@
 import fs from 'fs';
 import path from 'path';
 
-const SETTINGS_FILE = path.join(process.cwd(), 'data', 'settings.json');
+// Use /tmp on Vercel as process.cwd() is read-only
+const isVercel = process.env.VERCEL === '1';
+const SETTINGS_FILE = isVercel 
+  ? path.join('/tmp', 'settings.json') 
+  : path.join(process.cwd(), 'data', 'settings.json');
 
 export interface AppSettings {
   databaseUrl: string;
@@ -10,7 +14,9 @@ export interface AppSettings {
 
 const defaultSettings: AppSettings = {
   databaseUrl: process.env.DATABASE_URL || '',
-  adminPattern: [0, 1, 2, 5, 8],
+  adminPattern: process.env.ADMIN_PATTERN 
+    ? JSON.parse(process.env.ADMIN_PATTERN) 
+    : [0, 1, 2, 5, 8],
 };
 
 export function getSettings(): AppSettings {
