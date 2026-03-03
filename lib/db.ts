@@ -1,3 +1,6 @@
+import { neon } from '@neondatabase/serverless';
+import { getSettings } from './settings';
+
 export interface Comic {
   id: string;
   title: string;
@@ -21,14 +24,14 @@ export interface Chapter {
   createdAt: number;
 }
 
-// In-memory database for prototype
-export const db = {
+// In-memory fallback
+export const memoryDb = {
   comics: [] as Comic[],
   chapters: [] as Chapter[],
 };
 
 // Seed some initial data
-db.comics.push({
+memoryDb.comics.push({
   id: '1',
   title: 'Solo Leveling',
   slug: 'solo-leveling',
@@ -41,7 +44,7 @@ db.comics.push({
   updatedAt: Date.now(),
 });
 
-db.chapters.push({
+memoryDb.chapters.push({
   id: '1',
   comicId: '1',
   title: 'Chapter 1',
@@ -54,3 +57,54 @@ db.chapters.push({
   ],
   createdAt: Date.now(),
 });
+
+export async function initDb() {
+  const settings = getSettings();
+  if (!settings.databaseUrl) return;
+
+  try {
+    const sql = neon(settings.databaseUrl);
+    
+    await sql`
+      CREATE TABLE IF NOT EXISTS comics (
+        id VARCHAR(255) PRIMARY KEY,
+        title VARCHAR(255) NOT NULL,
+        slug VARCHAR(255) NOT NULL UNIQUE,
+        description TEXT,
+        cover_image TEXT,
+        author VARCHAR(255),
+        status VARCHAR(50),
+        genres JSONB,
+        created_at BIGINT,
+        updated_at BIGINT
+      )
+    `;
+
+    await sql`
+      CREATE TABLE IF NOT EXISTS chapters (
+        id VARCHAR(255) PRIMARY KEY,
+        comic_id VARCHAR(255) REFERENCES comics(id) ON DELETE CASCADE,
+        title VARCHAR(255),
+        number FLOAT,
+        slug VARCHAR(255),
+        images JSONB,
+        created_at BIGINT
+      )
+    `;
+  } catch (error) {
+    console.error('Failed to initialize Neon database:', error);
+  }
+}
+
+// Helper to get Neon client if configured
+export function getDbClient() {
+  const settings = getSettings();
+  if (settings.databaseUrl) {
+    return neon(settings.databaseUrl);
+  }
+  return null;
+}
+
+// Initialize on load
+initDb().catch(console.error);
+
