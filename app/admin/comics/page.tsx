@@ -15,6 +15,14 @@ export default function AdminComics() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [comicToDelete, setComicToDelete] = useState<string | null>(null);
 
+  // Bulk Scrape Modal State
+  const [scrapeModalOpen, setScrapeModalOpen] = useState(false);
+  const [comicToScrape, setComicToScrape] = useState<Comic | null>(null);
+  const [scrapeCount, setScrapeCount] = useState<number>(1);
+  const [scrapeSourceUrl, setScrapeSourceUrl] = useState('');
+  const [isScraping, setIsScraping] = useState(false);
+  const [scrapeProgress, setScrapeProgress] = useState(0);
+
   useEffect(() => {
     fetchComics();
   }, []);
@@ -49,6 +57,39 @@ export default function AdminComics() {
     } finally {
       setDeleteModalOpen(false);
       setComicToDelete(null);
+    }
+  };
+
+  const openScrapeModal = (comic: Comic, count: number) => {
+    setComicToScrape(comic);
+    setScrapeCount(count);
+    setScrapeSourceUrl('');
+    setScrapeProgress(0);
+    setScrapeModalOpen(true);
+  };
+
+  const handleBulkScrape = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!comicToScrape || !scrapeSourceUrl) return;
+
+    setIsScraping(true);
+    setScrapeProgress(0);
+
+    try {
+      // Simulate scraping progress for the requested number of chapters
+      for (let i = 1; i <= scrapeCount; i++) {
+        // In a real app, this would call an API to scrape each chapter
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        setScrapeProgress(i);
+      }
+      
+      alert(`Successfully scraped ${scrapeCount} chapters!`);
+      setScrapeModalOpen(false);
+    } catch (error) {
+      console.error(error);
+      alert('An error occurred during scraping');
+    } finally {
+      setIsScraping(false);
     }
   };
 
@@ -87,6 +128,7 @@ export default function AdminComics() {
                 <th className="px-6 py-4 font-medium">Title</th>
                 <th className="px-6 py-4 font-medium">Author</th>
                 <th className="px-6 py-4 font-medium">Status</th>
+                <th className="px-6 py-4 font-medium">Scraping</th>
                 <th className="px-6 py-4 font-medium text-right">Actions</th>
               </tr>
             </thead>
@@ -106,6 +148,28 @@ export default function AdminComics() {
                       {comic.status}
                     </span>
                   </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <input 
+                        type="number" 
+                        placeholder="Qty" 
+                        id={`scrape-qty-${comic.id}`}
+                        defaultValue="1"
+                        className="w-16 bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-xs text-zinc-200 focus:outline-none focus:border-emerald-500"
+                        min="1"
+                      />
+                      <button 
+                        onClick={() => {
+                          const qtyInput = document.getElementById(`scrape-qty-${comic.id}`) as HTMLInputElement;
+                          const qty = parseInt(qtyInput?.value || '1', 10);
+                          openScrapeModal(comic, qty);
+                        }}
+                        className="bg-emerald-600/20 text-emerald-500 hover:bg-emerald-600/30 px-2 py-1 rounded text-xs font-medium transition-colors"
+                      >
+                        Scrape
+                      </button>
+                    </div>
+                  </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex items-center justify-end gap-3">
                       <Link href={`/admin/comics/${comic.id}`} className="text-zinc-400 hover:text-emerald-400 transition-colors">
@@ -120,7 +184,7 @@ export default function AdminComics() {
               ))}
               {filteredComics.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-6 py-8 text-center text-zinc-500">
+                  <td colSpan={5} className="px-6 py-8 text-center text-zinc-500">
                     No comics found.
                   </td>
                 </tr>
@@ -140,6 +204,71 @@ export default function AdminComics() {
           setComicToDelete(null);
         }}
       />
+
+      {/* Bulk Scrape Modal */}
+      {scrapeModalOpen && comicToScrape && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-md overflow-hidden shadow-2xl">
+            <div className="p-6 border-b border-zinc-800">
+              <h3 className="text-xl font-bold text-zinc-50">Scrape Chapters</h3>
+              <p className="text-sm text-zinc-400 mt-1">
+                Scraping <strong className="text-emerald-400">{scrapeCount}</strong> chapter(s) for <strong>{comicToScrape.title}</strong>
+              </p>
+            </div>
+            
+            <form onSubmit={handleBulkScrape} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-zinc-400 mb-1">Source URL</label>
+                <input
+                  type="url"
+                  required
+                  value={scrapeSourceUrl}
+                  onChange={(e) => setScrapeSourceUrl(e.target.value)}
+                  className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-zinc-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                  placeholder="https://example.com/manga/..."
+                  disabled={isScraping}
+                />
+                <p className="text-xs text-zinc-500 mt-2">
+                  Enter the base URL or the URL of the first chapter to scrape.
+                </p>
+              </div>
+              
+              {isScraping && (
+                <div className="pt-4">
+                  <div className="flex justify-between text-xs text-zinc-400 mb-2">
+                    <span>Progress</span>
+                    <span>{scrapeProgress} / {scrapeCount}</span>
+                  </div>
+                  <div className="w-full bg-zinc-800 rounded-full h-2 overflow-hidden">
+                    <div 
+                      className="bg-emerald-500 h-full transition-all duration-300"
+                      style={{ width: `${(scrapeProgress / scrapeCount) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+              
+              <div className="pt-4 flex items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => !isScraping && setScrapeModalOpen(false)}
+                  disabled={isScraping}
+                  className="px-4 py-2 text-zinc-400 hover:text-zinc-200 font-medium transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isScraping}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-6 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors disabled:opacity-50"
+                >
+                  {isScraping ? 'Scraping...' : 'Start Scraping'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
