@@ -1,9 +1,30 @@
 import { NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { memoryDb, getDbClient } from '@/lib/db';
 import slugify from 'slugify';
 
 export async function GET() {
-  return NextResponse.json(db.comics);
+  const sql = getDbClient();
+  if (sql) {
+    try {
+      const comics = await sql`SELECT * FROM comics ORDER BY updated_at DESC`;
+      return NextResponse.json(comics.map(c => ({
+        id: c.id,
+        title: c.title,
+        slug: c.slug,
+        description: c.description,
+        coverImage: c.cover_image,
+        author: c.author,
+        status: c.status,
+        genres: c.genres || [],
+        createdAt: Number(c.created_at),
+        updatedAt: Number(c.updated_at)
+      })));
+    } catch (e) {
+      console.error(e);
+      return NextResponse.json(memoryDb.comics);
+    }
+  }
+  return NextResponse.json(memoryDb.comics);
 }
 
 export async function POST(request: Request) {
@@ -24,9 +45,19 @@ export async function POST(request: Request) {
       updatedAt: Date.now(),
     };
 
-    db.comics.push(newComic);
+    const sql = getDbClient();
+    if (sql) {
+      await sql`
+        INSERT INTO comics (id, title, slug, description, cover_image, author, status, genres, created_at, updated_at)
+        VALUES (${newComic.id}, ${newComic.title}, ${newComic.slug}, ${newComic.description}, ${newComic.coverImage}, ${newComic.author}, ${newComic.status}, ${JSON.stringify(newComic.genres)}, ${newComic.createdAt}, ${newComic.updatedAt})
+      `;
+    } else {
+      memoryDb.comics.push(newComic);
+    }
+    
     return NextResponse.json(newComic, { status: 201 });
   } catch (error) {
+    console.error(error);
     return NextResponse.json({ error: 'Failed to create comic' }, { status: 400 });
   }
 }
