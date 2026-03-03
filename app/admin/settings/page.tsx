@@ -86,6 +86,8 @@ export default function AdminSettings() {
             <label className="block text-sm font-medium text-zinc-400 mb-4">Admin Unlock Pattern</label>
             <div className="text-xs text-zinc-500 mb-6 max-w-md">
               Draw a new pattern to protect the admin panel. The pattern must connect at least 4 dots.
+              <br/><br/>
+              <strong className="text-amber-500">Note for Vercel users:</strong> Settings saved here may reset. For permanent settings on Vercel, add an environment variable <code>ADMIN_PATTERN</code> with your pattern array (e.g., <code>[0,1,2,5,8]</code>).
             </div>
             
             <div className="flex flex-col md:flex-row gap-8 items-start">
@@ -147,6 +149,8 @@ export default function AdminSettings() {
             <div className="text-xs text-zinc-500 mb-2">
               Enter your Neon PostgreSQL connection string to save comics to the database instead of memory.
               (e.g., <code>postgresql://user:password@ep-name.region.aws.neon.tech/dbname?sslmode=require</code>)
+              <br/><br/>
+              <strong className="text-amber-500">Note for Vercel users:</strong> Settings saved here may reset. For permanent settings on Vercel, add an environment variable <code>DATABASE_URL</code> with your connection string.
             </div>
             <div className="flex gap-2 max-w-2xl">
               <input
